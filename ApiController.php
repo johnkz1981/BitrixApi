@@ -42,7 +42,11 @@ class ApiController extends Controller
   private function _getApiResult($api, $url)
   {
     $class = 'App\Http\Controllers\\' . $api;
-    $key = md5(json_encode($this->q) . $api);
+    $key = clone $this->q;
+    unset($key->sortField);
+    unset($key->group);
+    
+    $key = md5(json_encode($key) . $api);
     //Cache::forget($key);die();
 
     if (Cache::has($key)) {
@@ -69,7 +73,7 @@ class ApiController extends Controller
     return [$bitrixJson, $emexJson];
   }
 
-  private function _mergerContractor($keyLimit = 30)
+  private function _mergerContractor($keyLimit = 5)
   {
     $contractors = [];
     $arrContracts = $this->_getArrContractors();

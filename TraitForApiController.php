@@ -89,11 +89,11 @@ trait TraitForApiController
 
   private function _sortBy(&$contractors)
   {
-    if (isset($this->q->sortField)) {
+    if (isset($this->q->sortField) && $this->q->sortField[0]) {
       $field = $this->q->sortField[0];
       $direction = $this->q->sortField[1];
       usort($contractors, function ($param1, $param2) use ($field, $direction) {
-        if ($direction === 'asc') {
+        if ($direction) {
           return $param1->$field <=> $param2->$field;
         }
         return $param2->$field <=> $param1->$field;
