@@ -10,30 +10,12 @@ class ApiController extends Controller
 {
   use TraitForApiController;
 
-  private $login = '';
-  private $url = '';
-  private $detailNum = '';
-  private $makeLogo = '';
-  private $manufacturer = '';
-  private $password = '';
+  private $q = null;
   private $arResult = null;
-  private $q = '';
-  private $onlyBitrix = '';
-  private $array = '';
-  private $group = '';
-  private $substLevel = '';
-  private $limit = '';
-  private $brandAndCode = '';
-  private $priceGroup = '';
-  private $priceGroupName = '';
 
   function __construct(Request $request)
   {
     $objProvader = new \stdClass();
-
-    $this->manufacturer = $request->input('manufacturer');
-    $this->limit = $request->input('limit');
-    $this->brandAndCode = $request->input('brandAndCode');
 
     $target = new \stdClass();
     $target->makeLogo = '';
@@ -60,9 +42,9 @@ class ApiController extends Controller
   private function _getApiResult($api, $url)
   {
     $class = 'App\Http\Controllers\\' . $api;
-    $key = md5(json_encode($this->q). $api);
+    $key = md5(json_encode($this->q) . $api);
     //Cache::forget($key);die();
-    
+
     if (Cache::has($key)) {
       $this->arResult = Cache::get($key);
     } else {
@@ -99,7 +81,6 @@ class ApiController extends Controller
     $totalItem->minPriseContractor = 0;
     $totalItem->minPriseOur = 0;
     $arrUniqueBrandAndCode = [];
-    $countRow = 1;
     $keyLimit = empty($this->q->limit) ? $keyLimit : $this->q->limit;
 
     foreach ($arrContracts as $contract) {
@@ -119,16 +100,11 @@ class ApiController extends Controller
         if ($this->_isSkippedPriceGroup($contractorItem, $arrUniqueBrandAndCode)) {
           continue;
         }
-        if (count($arrUniqueBrandAndCode) > $keyLimit) {
-          continue;
-        }
-        if ($countRow > $keyLimit) {
-          continue;
-        }
-        $countRow++;
         $contractors[] = $contractorItem;
       }
     }
+    $this->_sortBy($contractors);
+    $contractors = $this->_limitRows($contractors, $keyLimit);
     $totalObj->name = '';
     $totalObj->code = '';
     $totalObj->prise = '';
@@ -144,7 +120,6 @@ class ApiController extends Controller
     $totalObj->countApi = $totalItem->countApi;
     $totalObj->countGroupUnique = count($arrUniqueBrandAndCode);
     $contractors[] = $totalObj;
-    //print_r($contractors);
     return $contractors;
   }
 }

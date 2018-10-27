@@ -86,4 +86,25 @@ trait TraitForApiController
     $arrUnique[] = $contractorItem;
     return false;
   }
+
+  private function _sortBy(&$contractors)
+  {
+    if (isset($this->q->sortField)) {
+      $field = $this->q->sortField[0];
+      $direction = $this->q->sortField[1];
+      usort($contractors, function ($param1, $param2) use ($field, $direction) {
+        if ($direction === 'asc') {
+          return $param1->$field <=> $param2->$field;
+        }
+        return $param2->$field <=> $param1->$field;
+      });
+    }
+  }
+
+  private function _limitRows($contractors, $keyLimit)
+  {
+    return array_filter($contractors, function ($f1) use ($keyLimit) {
+      return $f1 < $keyLimit;
+    }, ARRAY_FILTER_USE_KEY);
+  }
 }
