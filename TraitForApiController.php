@@ -9,7 +9,7 @@ trait TraitForApiController
   private function _getSkipped($contractorItem)
   {
     return !is_object($contractorItem) ||
-      $contractorItem->prise === 0 ||
+      $contractorItem->price === 0 ||
       $contractorItem->quantity === 0 ||
       ($contractorItem->isContractor === 1 && $this->q->bitrix === 'yes') ||
       ($contractorItem->isContractor === 0 && !($this->q->bitrix === 'yes')) ||
@@ -21,10 +21,10 @@ trait TraitForApiController
   {
     if ($contractorItem->isContractor === 1) {
       $totalItem->minDays = $this->_getMin($totalItem->minDays, $contractorItem->deliveryTime);
-      $totalItem->minPriseContractor = $this->_getMin($totalItem->minPriseContractor, $contractorItem->prise);
+      $totalItem->minPriceContractor = $this->_getMin($totalItem->minPriceContractor, $contractorItem->price);
       $totalItem->countApi++;
     } else {
-      $totalItem->minPriseOur = $this->_getMin($totalItem->minPriseOur, $contractorItem->prise);
+      $totalItem->minPriceOur = $this->_getMin($totalItem->minPriceOur, $contractorItem->price);
       $totalItem->countBitix++;
     }
     return $totalItem;
@@ -52,7 +52,7 @@ trait TraitForApiController
     }
     foreach ($arrUnique as &$item) {
       if ($item->brandAndCode === $contractorItem->brandAndCode) {
-        $item->prise = $this->_getMin($contractorItem->prise, $item->prise);
+        $item->price = $this->_getMin($contractorItem->price, $item->price);
 
         if (strlen($contractorItem->MakeLogo) > 0) {
           $item->MakeLogo = $contractorItem->MakeLogo;
@@ -94,9 +94,9 @@ trait TraitForApiController
       $direction = $this->q->sortField[1];
       usort($contractors, function ($param1, $param2) use ($field, $direction) {
         if ($direction) {
-          return $param1->$field <=> $param2->$field;
+          return $param2->$field <=> $param1->$field;
         }
-        return $param2->$field <=> $param1->$field;
+        return $param1->$field <=> $param2->$field;
       });
     }
   }

@@ -4,30 +4,24 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 
-class ApiBitrix implements IApi
+class ApiBitrix extends BaseApi
 {
-  private $url = '';
-  private $q = '';
-
-  public function __construct($url = '', $q = '')
+  private $source = null;
+  public function __construct($source)
   {
-    $this->url = $url;
-    $this->q = $q;
-  }
+    parent::__construct();
 
-  public function setUrl($url)
-  {
-    $this->url = $url;
-  }
-
-  public function setCode($q)
-  {
-    $this->q = $q;
+    $this->target->markup = '';
+    $this->target->userId = '';
+    $this->target->isAdmin = false;
+    $this->source = (object)array_merge((array)$this->target, (array)$source);
   }
 
   public function getResult()
   {
-    $ch = curl_init("$this->url?q=$this->q");
+    $source = $this->source;
+    $url = "$source->url?q=$source->searchCode&markup=$source->markup&userId=$source->userId&isAdmin=$source->isAdmin";
+    $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_HEADER, 0);
     curl_setopt($ch, CURLOPT_POST, 0);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);

@@ -8,16 +8,17 @@ class ConvertContracts extends Controller
 {
   private $item;
 
-  public function __construct($item)
+  public function __construct($item, $markup)
   {
     $this->item = $item;
+    $this->markup = $markup;
   }
 
   private function _convert()
   {
     if ($this->item instanceof \stdClass) {
       $this->item->name = $this->item->name ?? $this->item->DetailNameRus;
-      $this->item->prise = $this->_getPrise();
+      $this->item->price = $this->_getPrice();
       $this->item->vendorСode = $this->item->vendorСode ?? $this->item->DetailNum;
       $this->item->deliveryTime = $this->_getDeliveryTime();
       $this->item->contractor = $this->_getName();
@@ -27,6 +28,7 @@ class ConvertContracts extends Controller
       $this->item->MakeLogo = $this->item->MakeLogo ?? '';
       $this->item->PriceGroup = $this->item->PriceGroup ?? 'Original';
       $this->item->color = $this->_getColor();
+      $this->item->markup = $this->markup;
       //$this->item->id = $this->item->id ?? $this->item->GroupId;
     }
   }
@@ -57,12 +59,13 @@ class ConvertContracts extends Controller
     return null;
   }
 
-  private function _getPrise()
+  private function _getPrice()
   {
-    if (isset($this->item->prise)) {
-      return (int)$this->item->prise;
+    if (isset($this->item->price)) {
+      return (int)$this->item->price;
     } else {
-      return (int)$this->item->ResultPrice;
+      $this->item->priceOriginal = (int)$this->item->ResultPrice;
+      return round((int)$this->item->ResultPrice * (int)$this->markup / 100 + (int)$this->item->ResultPrice, 2);
     }
   }
 

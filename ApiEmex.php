@@ -4,50 +4,39 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 
-class ApiEmex implements IApi
+class ApiEmex extends BaseApi
 {
-  private $url = '';
-  private $q = '';
-  private $makeLogo = '';
-  private $substLevel = '';
+  private $source = null;
+  private $login = '';
+  private $password = '';
 
-  public function __construct($url = '', $q = '', $makeLogo = '', $substLevel = '')
+  public function __construct($source)
   {
-    $this->url = $url;
-    $this->q = $q;
-    $this->makeLogo = urldecode($makeLogo);
-    $this->substLevel = $substLevel;
     $this->login = '1217282';
     $this->password = "125asdf";
-  }
 
-  public function setUrl($url)
-  {
-    $this->url = $url;
-  }
+    parent::__construct();
 
-  public function setCode($q)
-  {
-    $this->q = $q;
+    $this->source = (object)array_merge((array)$this->target, (array)$source);
   }
 
   public function getResult()
   {
     try {
-      $client = new \SoapClient($this->url);
+      $client = new \SoapClient($this->source->url);
       $params = [
         "login" => $this->login,
         "password" => $this->password,
-        "detailNum" => $this->q,
-        "makeLogo" => $this->makeLogo,
-        "substLevel" => $this->substLevel,
+        "detailNum" => $this->source->searchCode,
+        "makeLogo" => $this->source->makeLogo,
+        "substLevel" => $this->source->substLevel,
         "substFilter" => "None",
         "deliveryRegionType" => "PRI",
         "maxOneDetailOffersCount" => null,
       ];
       $result = $client->FindDetailAdv4($params);
       $resulJson = json_encode($result->FindDetailAdv4Result->Details);
-
+      
       if ($resulJson === '{}' || $result->FindDetailAdv4Result->Details->SoapDetailItem instanceof \stdClass) {
         return $this->arResult = json_encode($result->FindDetailAdv4Result->Details);
       } else {

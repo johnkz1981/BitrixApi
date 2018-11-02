@@ -12,6 +12,7 @@ class ApiController extends Controller
 
   private $q = null;
   private $arResult = null;
+  private $userId = '';
 
   function __construct(Request $request)
   {
@@ -27,6 +28,7 @@ class ApiController extends Controller
     $target->group = '';
     $target->array = '';
 
+    $this->userId = $request->input('userId');
     $this->q = (object)array_merge((array)$target, (array)json_decode($request->input('q')));
   }
 
@@ -39,51 +41,91 @@ class ApiController extends Controller
     echo json_encode($this->_mergerContractor());
   }
 
-  private function _getApiResult($api, $url)
+  private function _getApiResult($source)
   {
-    $class = 'App\Http\Controllers\\' . $api;
+    $target = new \stdClass();
+    $target->api = '';
+    $target->url = '';
+    $target->markup = '';
+    $target->isAdmin = false;
+    $query = (object)array_merge((array)$target, (array)$source);
+
+    $class = 'App\Http\Controllers\\' . $query->api;
     $key = clone $this->q;
     unset($key->sortField);
     unset($key->group);
-    
-    $key = md5(json_encode($key) . $api);
+
+    $key = md5(json_encode($key) . json_encode($query));
     //Cache::forget($key);die();
 
     if (Cache::has($key)) {
       $this->arResult = Cache::get($key);
     } else {
-      $api = new $class($url, $this->q->searchCode, $this->q->makeLogo, $this->q->substLevel);
+      $api = new $class([
+        'url' => $query->url,
+        'searchCode' => $this->q->searchCode,
+        'makeLogo' => $this->q->makeLogo,
+        'substLevel' => $this->q->substLevel,
+        'markup' => $query->markup,
+        'userId' => $this->userId,
+        'isAdmin' => $query->isAdmin
+      ]);
       $this->arResult = $api->getResult();
       Cache::put($key, $this->arResult, 10);
     }
     return $this->arResult;
   }
 
-  private function _getArrContractors()
+  private function _getArrContractors($queryContractor = null)
   {
-    $bitrix = $this->_getApiResult('ApiBitrix', '192.168.20.221/api/class-search-code.php');
+    $source = new \stdClass();
+    $source->markup = false;
+    $source->isAdmin = false;
+    $source = (object)array_merge((array)$source, (array)$queryContractor);
+    $source->api = 'ApiBitrix';
+    $source->url = '192.168.20.221/api/class-search-code.php';
+
+    if ($source->markup) {
+      return $this->_getApiResult($source);
+    };
+    if ($source->isAdmin) {
+      return $this->_getApiResult($source);
+    };
+    $bitrix = $this->_getApiResult($source);
     $bitrixJson = json_decode($bitrix);
 
     if ($this->q->bitrix === 'yes') {
       return [$bitrixJson];
     }
-    $emex = $this->_getApiResult('ApiEmex', 'http://ws.emex.ru/EmExService.asmx?wsdl', $this->q->makeLogo, $this->q->substLevel);
+    $source->api = 'ApiEmex';
+    $source->url = 'http://ws.emex.ru/EmExService.asmx?wsdl';
+    $source->makeLogo = $this->q->makeLogo;
+    $source->substLevel = $this->q->substLevel;
+    $emex = $this->_getApiResult($source);
     $emexJson = json_decode($emex);
 
     return [$bitrixJson, $emexJson];
   }
 
-  private function _mergerContractor($keyLimit = 5)
+  private function _mergerContractor($keyLimit = 20)
   {
     $contractors = [];
+    $queryContractor = new \stdClass();
+    $queryContractor->isAdmin = true;
+    $isAdmin = $this->_getArrContractors($queryContractor);
+    $queryContractor->isAdmin = false;
+    $queryContractor->markup = true;
+    $markup = $this->_getArrContractors($queryContractor);
+    $queryContractor->markup = false;
     $arrContracts = $this->_getArrContractors();
     $totalObj = new \stdClass();
     $totalItem = new \stdClass();
+    $fullObj = new \stdClass();
     $totalItem->countBitix = 0;
     $totalItem->countApi = 0;
     $totalItem->minDays = 0;
-    $totalItem->minPriseContractor = 0;
-    $totalItem->minPriseOur = 0;
+    $totalItem->minPriceContractor = 0;
+    $totalItem->minPriceOur = 0;
     $arrUniqueBrandAndCode = [];
     $keyLimit = empty($this->q->limit) ? $keyLimit : $this->q->limit;
 
@@ -91,8 +133,9 @@ class ApiController extends Controller
       if ($contract === null) {
         continue;
       }
+
       foreach ($contract as $key => $item) {
-        $item = new ConvertContracts($item);
+        $item = new ConvertContracts($item, $markup);
         $contractorItem = $item->getResult();
         if ($this->_getSkipped($contractorItem)) {
           continue;
@@ -109,21 +152,15 @@ class ApiController extends Controller
     }
     $this->_sortBy($contractors);
     $contractors = $this->_limitRows($contractors, $keyLimit);
-    $totalObj->name = '';
-    $totalObj->code = '';
-    $totalObj->prise = '';
-    $totalObj->vendorСode = '';
-    $totalObj->deliveryTime = '';
-    $totalObj->contractor = '';
-    $totalObj->manufacturer = '';
-    $totalObj->quantity = '';
     $totalObj->minDays = $totalItem->minDays;
-    $totalObj->minPriseOur = $totalItem->minPriseOur;
-    $totalObj->minPriseContractor = $totalItem->minPriseContractor;
+    $totalObj->minPriceOur = $totalItem->minPriceOur;
+    $totalObj->minPriceContractor = $totalItem->minPriceContractor;
     $totalObj->countBitix = $totalItem->countBitix;
     $totalObj->countApi = $totalItem->countApi;
     $totalObj->countGroupUnique = count($arrUniqueBrandAndCode);
-    $contractors[] = $totalObj;
-    return $contractors;
+    $totalObj->isAdmin = $isAdmin;
+    $fullObj->item = $contractors;
+    $fullObj->total = $totalObj;
+    return $fullObj;
   }
 }
